@@ -93,8 +93,7 @@ std::tuple<float, float, float> image_rgb_avg(const char *image_url) {
     
 }
 
-std::vector<std::tuple<float, float, float> >* k_means(cv::Mat image, int k) {
-    
+std::map<std::tuple<float, float, float>, int>* k_means(cv::Mat image, int k) {
     
     cv::Mat samples(image.rows * image.cols, 3, CV_32F);
     for (int y = 0; y < image.rows; y++) {
@@ -105,17 +104,16 @@ std::vector<std::tuple<float, float, float> >* k_means(cv::Mat image, int k) {
         }
     }
     
-    
-    //int clusterCount = 6;
-    int clusterCount = k;
     cv::Mat labels;
     int attempts = 5;
     cv::Mat centers;
-    kmeans(samples, clusterCount, labels, cvTermCriteria(CV_TERMCRIT_ITER|CV_TERMCRIT_EPS, 10000, 0.0001),
+    kmeans(samples, k, labels, cvTermCriteria(CV_TERMCRIT_ITER|CV_TERMCRIT_EPS, 10000, 0.0001),
            attempts, cv::KMEANS_PP_CENTERS, centers);
     
-    std::vector<std::tuple<float, float, float> > *colors = new std::vector<std::tuple<float, float, float> >;
+    //std::vector<std::tuple<float, float, float> > *colors = new std::vector<std::tuple<float, float, float> >;
     
+    std::map<std::tuple<float, float, float>, int> *colors = new std::map<std::tuple<float, float, float>, int>;
+    //std::map<float, int> colors;
     
     cv::Mat new_image(image.size(), image.type());
     for (int y = 0; y < image.rows; y++) {
@@ -126,18 +124,27 @@ std::vector<std::tuple<float, float, float> >* k_means(cv::Mat image, int k) {
             int new_g = centers.at<float>(cluster_idx, 1);
             int new_b = centers.at<float>(cluster_idx, 0);
             
-            new_image.at<cv::Vec3b>(y,x)[0] = new_r;
+            new_image.at<cv::Vec3b>(y,x)[2] = new_r;
             new_image.at<cv::Vec3b>(y,x)[1] = new_g;
-            new_image.at<cv::Vec3b>(y,x)[2] = new_b;
+            new_image.at<cv::Vec3b>(y,x)[0] = new_b;
             
-            colors->push_back(tuple<float, float, float>(new_r, new_g, new_b));
+            tuple<float, float, float> color = tuple<float, float, float>(new_r, new_g, new_b);
+            
+            // Update if contains
+            std::map<tuple<float, float, float>, int>::iterator it = colors->find(color);
+            if (it != colors->end()) {
+                it->second++;
+            }
+            // Insert otherwise
+            else {
+                colors->insert( std::pair<std::tuple<float, float, float>, int>(color, 1) );
+            }
+            
         }
     }
     
-    
-    
-    imshow("clustered image", new_image);
-    cv::waitKey(0);
+    //imshow("clustered image", new_image);
+    //cv::waitKey(0);
     
     return colors;
 }
@@ -163,7 +170,7 @@ int main(void) {
     */
     cv::Mat src = curlImg(image_url.c_str());
     
-    
+    k_means(src, 6);
    
     
 }
