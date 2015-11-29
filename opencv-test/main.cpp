@@ -161,6 +161,37 @@ std::map<std::tuple<float, float, float>, float>* k_means(cv::Mat image, int k) 
     return colors;
 }
 
+struct sort_by_color {
+    bool operator ()(std::tuple<float, float, float> color1, std::tuple<float, float, float> color2) const {
+        cv::Mat c1;
+        c1.at<cv::Vec3b>(0,0)[2] = std::get<2>(color1);
+        c1.at<cv::Vec3b>(0,0)[1] = std::get<1>(color1);
+        c1.at<cv::Vec3b>(0,0)[0] = std::get<0>(color1);
+        
+        cv::Mat c2;
+        c2.at<cv::Vec3b>(0,0)[2] = std::get<2>(color2);
+        c2.at<cv::Vec3b>(0,0)[1] = std::get<1>(color2);
+        c2.at<cv::Vec3b>(0,0)[0] = std::get<0>(color2);
+        
+        cv::Mat c1_hsv;
+        cv::Mat c2_hsv;
+        
+        cv::cvtColor(c1, c1_hsv, CV_RGB2HSV);
+        cv::cvtColor(c2, c2_hsv, CV_RGB2HSV);
+        
+        return c1_hsv.at<cv::Vec3b>(0,0)[0] < c1_hsv.at<cv::Vec3b>(0,0)[0];
+    }
+};
+
+void sort_colors (std::map<std::tuple<float, float, float>, float> *colors) {
+    std::vector<std::tuple<float, float, float> > color_list;
+    std::map<tuple<float, float, float>, float>::iterator it;
+    for (it = colors->begin(); it != colors->end(); it++) {
+        color_list.push_back(it->first);
+    }
+    
+}
+
 
 int main(void) {
     //string image_url = "http://41.media.tumblr.com/72d7fa871b17b518fc5605ea66c4a375/tumblr_na3ixsXuO91sgt2tfo1_1280.jpg";
@@ -182,8 +213,10 @@ int main(void) {
     */
     cv::Mat src = curlImg(image_url.c_str());
     
-    k_means(src, 6);
-   
+    std::map<std::tuple<float, float, float>, float> *colors = k_means(src, 6);
+    
+    sort_colors(colors);
+    
     
 }
 
