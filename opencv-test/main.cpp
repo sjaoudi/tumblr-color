@@ -93,7 +93,7 @@ std::tuple<float, float, float> image_rgb_avg(const char *image_url) {
     
 }
 
-std::map<std::tuple<float, float, float>, int>* k_means(cv::Mat image, int k) {
+std::map<std::tuple<float, float, float>, float>* k_means(cv::Mat image, int k) {
     
     cv::Mat samples(image.rows * image.cols, 3, CV_32F);
     for (int y = 0; y < image.rows; y++) {
@@ -112,8 +112,7 @@ std::map<std::tuple<float, float, float>, int>* k_means(cv::Mat image, int k) {
     
     //std::vector<std::tuple<float, float, float> > *colors = new std::vector<std::tuple<float, float, float> >;
     
-    std::map<std::tuple<float, float, float>, int> *colors = new std::map<std::tuple<float, float, float>, int>;
-    //std::map<float, int> colors;
+    std::map<std::tuple<float, float, float>, int> colors_pixels;
     
     cv::Mat new_image(image.size(), image.type());
     for (int y = 0; y < image.rows; y++) {
@@ -131,16 +130,29 @@ std::map<std::tuple<float, float, float>, int>* k_means(cv::Mat image, int k) {
             tuple<float, float, float> color = tuple<float, float, float>(new_r, new_g, new_b);
             
             // Update if contains
-            std::map<tuple<float, float, float>, int>::iterator it = colors->find(color);
-            if (it != colors->end()) {
+            std::map<tuple<float, float, float>, int>::iterator it = colors_pixels.find(color);
+            if (it != colors_pixels.end()) {
                 it->second++;
             }
             // Insert otherwise
             else {
-                colors->insert( std::pair<std::tuple<float, float, float>, int>(color, 1) );
+                colors_pixels.insert( std::pair<std::tuple<float, float, float>, int>(color, 1) );
             }
             
         }
+    }
+    
+    int pixels = 0;
+    std::map<tuple<float, float, float>, int>::iterator pixels_it;
+    for(pixels_it = colors_pixels.begin(); pixels_it != colors_pixels.end(); pixels_it++) {
+        pixels += pixels_it->second;
+    }
+
+    std::map<std::tuple<float, float, float>,float> *colors = new std::map<std::tuple<float, float, float>,float>;
+    
+    std::map<tuple<float, float, float>, float>::iterator it;
+    for(it = colors->begin(); it != colors->end(); it++) {
+        colors->insert(std::pair<std::tuple<float, float, float>, float>(it->first, (float)it->second/pixels));
     }
     
     //imshow("clustered image", new_image);
