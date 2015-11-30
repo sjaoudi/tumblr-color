@@ -12,6 +12,7 @@
 
 using namespace std;
 
+typedef std::tuple<float, float, float> pixel;
 
 size_t write_data(char *ptr, size_t size, size_t nmemb, void *userdata) {
     std::ostringstream *stream = (std::ostringstream*)userdata;
@@ -69,7 +70,7 @@ cv::Mat curlImg(const char *image_url) {
 }
 
 
-std::tuple<float, float, float> image_rgb_avg(const char *image_url) {
+pixel image_rgb_avg(const char *image_url) {
     
     cv::Mat image = curlImg(image_url);
     //cv::namedWindow( "Image output", CV_WINDOW_AUTOSIZE );
@@ -93,7 +94,7 @@ std::tuple<float, float, float> image_rgb_avg(const char *image_url) {
     
 }
 
-std::map<std::tuple<float, float, float>, float>* k_means(cv::Mat image, int k) {
+std::map<pixel, float>* k_means(cv::Mat image, int k) {
     
     cv::Mat samples(image.rows * image.cols, 3, CV_32F);
     for (int y = 0; y < image.rows; y++) {
@@ -112,7 +113,7 @@ std::map<std::tuple<float, float, float>, float>* k_means(cv::Mat image, int k) 
     
     //std::vector<std::tuple<float, float, float> > *colors = new std::vector<std::tuple<float, float, float> >;
     
-    std::map<std::tuple<float, float, float>, int> colors_pixels;
+    std::map<pixel, int> colors_pixels;
     
     cv::Mat new_image(image.size(), image.type());
     for (int y = 0; y < image.rows; y++) {
@@ -127,32 +128,32 @@ std::map<std::tuple<float, float, float>, float>* k_means(cv::Mat image, int k) 
             new_image.at<cv::Vec3b>(y,x)[1] = new_g;
             new_image.at<cv::Vec3b>(y,x)[0] = new_b;
             
-            tuple<float, float, float> color = tuple<float, float, float>(new_r, new_g, new_b);
+            pixel color = pixel(new_r, new_g, new_b);
             
             // Update if contains
-            std::map<tuple<float, float, float>, int>::iterator it = colors_pixels.find(color);
+            std::map<pixel, int>::iterator it = colors_pixels.find(color);
             if (it != colors_pixels.end()) {
                 it->second++;
             }
             // Insert otherwise
             else {
-                colors_pixels.insert( std::pair<std::tuple<float, float, float>, int>(color, 1) );
+                colors_pixels.insert( std::pair<pixel, int>(color, 1) );
             }
             
         }
     }
     
     int pixels = 0;
-    std::map<tuple<float, float, float>, int>::iterator pixels_it;
+    std::map<pixel, int>::iterator pixels_it;
     for(pixels_it = colors_pixels.begin(); pixels_it != colors_pixels.end(); pixels_it++) {
         pixels += pixels_it->second;
     }
 
-    std::map<std::tuple<float, float, float>,float> *colors = new std::map<std::tuple<float, float, float>,float>;
+    std::map<pixel,float> *colors = new std::map<pixel,float>;
     
-    std::map<tuple<float, float, float>, float>::iterator it;
-    for(it = colors->begin(); it != colors->end(); it++) {
-        colors->insert(std::pair<std::tuple<float, float, float>, float>(it->first, (float)it->second/pixels));
+    std::map<pixel, int>::iterator it;
+    for(it = colors_pixels.begin(); it != colors_pixels.end(); it++) {
+        colors->insert(std::pair<pixel, float>(it->first, (float)it->second/pixels));
     }
     
     //imshow("clustered image", new_image);
@@ -160,7 +161,7 @@ std::map<std::tuple<float, float, float>, float>* k_means(cv::Mat image, int k) 
     
     return colors;
 }
-
+/*
 struct sort_by_color {
     bool operator ()(std::tuple<float, float, float> color1, std::tuple<float, float, float> color2) const {
         cv::Mat c1;
@@ -182,14 +183,63 @@ struct sort_by_color {
         return c1_hsv.at<cv::Vec3b>(0,0)[0] < c1_hsv.at<cv::Vec3b>(0,0)[0];
     }
 };
+ */
 
-void sort_colors (std::map<std::tuple<float, float, float>, float> *colors) {
-    std::vector<std::tuple<float, float, float> > color_list;
-    std::map<tuple<float, float, float>, float>::iterator it;
+bool sort_by_color(pixel color1, pixel color2) {
+    cv::Mat c1(1,1, CV_8UC3, cvScalar(0,0,255));
+    c1.at<cv::Vec3b>(0,0)[2] = std::get<2>(color1);
+    c1.at<cv::Vec3b>(0,0)[1] = std::get<1>(color1);
+    c1.at<cv::Vec3b>(0,0)[0] = std::get<0>(color1);
+    
+    //cv::Mat c2;
+    cv::Mat c2(1,1, CV_8UC3, cvScalar(0,0,255));
+    c2.at<cv::Vec3b>(0,0)[2] = std::get<2>(color2);
+    c2.at<cv::Vec3b>(0,0)[1] = std::get<1>(color2);
+    c2.at<cv::Vec3b>(0,0)[0] = std::get<0>(color2);
+    
+    cv::Mat c1_hsv;
+    cv::Mat c2_hsv;
+    
+    cv::cvtColor(c1, c1_hsv, CV_RGB2HSV);
+    cv::cvtColor(c2, c2_hsv, CV_RGB2HSV);
+    
+    int v1 = c1_hsv.at<cv::Vec3b>(0,0)[0];
+    int v2 = c2_hsv.at<cv::Vec3b>(0,0)[0];
+    
+    return v1 < v2;
+}
+
+std::vector<pixel >* sort_colors
+(std::map<pixel, float> *colors) {
+    
+    std::vector<pixel >* color_list = new std::vector<pixel >;
+    std::map<pixel, float>::iterator it;
     for (it = colors->begin(); it != colors->end(); it++) {
-        color_list.push_back(it->first);
+        color_list->push_back(it->first);
     }
     
+    std::sort(color_list->begin(), color_list->end(), sort_by_color);
+    
+    return color_list;
+    
+}
+
+void draw_func(std::vector<pixel >* color_list) {
+    cv::Mat image = cv::Mat::zeros( 800, 800, CV_8UC3 );
+    
+    // Draw a line
+    
+    for (int i = 0; i < color_list->size(); i++) {
+        pixel image_color = color_list->at(i);
+        //pixel rectangle_color = pixel(get<2>(image_color), get<1>(image_color), get<0>(image_color));
+        
+        rectangle( image, cvPoint( 0, 0 ), cvPoint( 50, 50), cvScalar(get<2>(image_color),
+                                                                      get<1>(image_color),
+                                                                      get<0>(image_color) ), -1, 1 );
+    }
+    cv::imshow("Image",image);
+    
+    cv::waitKey( 0 );
 }
 
 
@@ -213,9 +263,11 @@ int main(void) {
     */
     cv::Mat src = curlImg(image_url.c_str());
     
-    std::map<std::tuple<float, float, float>, float> *colors = k_means(src, 6);
+    std::map<pixel, float> *colors = k_means(src, 6);
     
-    sort_colors(colors);
+    std::vector<pixel > *color_list = sort_colors(colors);
+    
+    draw_func(color_list);
     
     
 }
