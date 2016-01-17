@@ -23,4 +23,4 @@ Instead of a blog, here's the tag 'sunset' with a notes (reblogs and likes) thre
 
 ![alt tag](https://github.com/sjaoudi/tumblr-color/blob/master/build/Debug/examples/sunset.png)
 
-The colors for each row were chosen using [k-means clustering](https://en.wikipedia.org/wiki/K-means_clustering) with k = 12. (See [doc entry](http://docs.opencv.org/2.4/modules/core/doc/clustering.html#kmeans)) One optimization idea would be to implement would be dimensionality reduction to each image to speed up the k-means step.
+The colors for each row were chosen using [k-means clustering](https://en.wikipedia.org/wiki/K-means_clustering) with k = 12. (See [doc entry](http://docs.opencv.org/2.4/modules/core/doc/clustering.html#kmeans)). The clusters for each image were then converted to HSV colorspace and sorted. One optimization idea would be to implement would be dimensionality reduction to each image to speed up the k-means step.
